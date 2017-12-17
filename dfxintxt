@@ -1,0 +1,1690 @@
+unit dxfINOut;
+
+interface
+uses classes,wintypes,graphics,forms
+
+,disegn
+,proget
+,uplinea
+,usymbol
+,udefsym
+,upunto
+,ulinea
+,ucerchio
+,uarco
+,utesto
+,uquota
+,ucivico
+,uregione
+,pian
+,uvertex
+,varbase
+,grafic
+,funzioni
+,funzioniGraf
+,umtesto
+,ustrada
+,sysutils
+,fontes
+;
+
+procedure dxfInNew(nome:string);
+
+procedure Salvadxf(nome:String;testazio,Roma,EsportoPenup:boolean;dim2D:Byte;ColoriTavola:Boolean);
+
+procedure leggitavolaIndcolori;
+
+implementation
+
+uses    Lamc;
+
+
+var F : Textfile;
+    contariga : Integer;
+
+ procedure aggiornacontariga;
+  var tt : String;
+  begin
+   inc(contariga);
+//   Lamcadform.contlabel1.visible:=True;   str(contariga,tt);
+//   Lamcadform.contlabel1.caption:=tt;   Lamcadform.contlabel1.Update;
+  end;
+
+
+
+procedure RipulireSpazioFondo(var riga:string);
+var k : Integer;
+    passa : String;
+begin
+ aggiornacontariga;
+ if length(riga)<=0 then exit;
+ if riga[length(riga)]=' ' then
+  begin
+   passa:='';
+   for k:=1 to length(riga)-1 do
+    begin
+     passa:=passa+riga[k];
+    end;
+   riga:=passa;
+  end;
+
+end;
+
+
+
+ { zona della lettura grrrafica disegno }
+ Procedure leggiEntita;
+ var rigae : string;
+     LocPoliLinea2 : TPlinea;
+     tipoelem : string;
+     indpiano : Integer;
+     vt1,vt2 : Tvertex;
+     LocPiano : TPiano;
+       on1,on2,on8 : Boolean;
+       on10,on20,on30,on40,on50,on70 : Boolean;
+       on11,on21,on31,on51 : Boolean;
+       on41,on42 : Boolean;
+       value1,value2,value8 : String;
+       value10,value20,value30,value40,value50,value70 : Extended;
+       value11,value21,value31,value51 : Extended;
+       value41,value42 : Extended;
+       value90 : Integer;
+       LocLinea : TLinea;
+       locPunto : TPunto;
+       LocCerchio : TCerchio;
+       xar1,yar1,xar2,yar2 : Extended;
+       locArco : TArco;
+       LocBlocco : TSimbolo;
+       LocTesto : TTesto;
+       stoplwpoly : Boolean;
+       numll : Integer;
+       valore70 : Integer;
+  procedure attuare;
+  var   kp : Integer;
+   begin
+    indpiano:=-1;
+    for kp:=0 to DisegnoCorrente.ListaPiani.count-1 do
+     begin
+      LocPiano:=DisegnoCorrente.ListaPiani.Items[kp];
+      if locPiano.nome=value8 then begin indpiano:=kp; break; end;
+     end;
+    if indpiano<0 then
+     begin
+      if value8<>'' then
+       begin
+        LocPiano:=TPiano.Create(value8); DisegnoCorrente.ListaPiani.add(LocPiano);
+        indpiano:=DisegnoCorrente.ListaPiani.count-1;
+       end
+       else indpiano:=0;
+     end;
+     LocPiano:=DisegnoCorrente.ListaPiani.Items[indpiano];
+
+     if tipoelem ='POINT' Then
+      begin
+       locPunto:=TPunto.create(value10,value20,value30);
+       LocPiano.Grafica.add(LocPunto);
+      end;
+     if tipoelem ='LINE' Then
+      begin
+       LocLinea:=TLinea.create(value10,value20,value30,value11,value21,value31,0,0);
+       LocPiano.Grafica.add(LocLinea);
+      end;
+
+     if tipoelem ='POLYLINE' Then
+      begin
+       if odd(round(value70)) then LocPoliLinea2:=TPLinea.create(True)
+                              else LocPoliLinea2:=TPLinea.create(False);
+       LocPiano.Grafica.add(LocPoliLinea2);
+      end;
+
+     if tipoelem ='VERTEX' Then
+      begin
+       if ((value10<>0) and (value20<>0)) then
+        begin
+       if locPolilinea2.spezzata.count=0
+         then LocPolilinea2.Aggiungi1(value10,value20,value30,0)
+         else LocPolilinea2.Aggiungi2(value10,value20,value30,0);
+        end;
+      end;
+
+     if tipoelem ='TEXT' Then
+      begin
+       LocTesto:=TTesto.Create(value10,value20,value30,value10,value20,value1,value40,value50);
+       LocPiano.grafica.add(LocTesto);
+      end;
+
+     if tipoelem ='SEQEND' Then
+      begin
+       if LocPolilinea2.chiusa then
+       begin
+        LocPolilinea2.tipo:='Y';
+        vt1:=LocPolilinea2.spezzata.items[0];
+        vt2:=LocPolilinea2.spezzata.items[LocPolilinea2.spezzata.count-1];
+        if ((vt1.x<>vt2.x) or (vt1.y<>vt2.y)) then
+        begin
+         LocPolilinea2.aggiungi2(vt1.x,vt1.y,0,0);
+        end;
+       end;
+      end;
+
+     if tipoelem = 'ARC' then
+      begin
+        xar1:=value10+sin(value50*pi/180);
+        yar1:=value20+cos(value50*pi/180);
+        xar2:=value10+sin(value51*pi/180);
+        yar2:=value20+cos(value51*pi/180);
+        LocArco:=TArco.create(value10,value20,value30, xar1,yar1,0, xar2,yar2,0,value40);
+        LocPiano.Grafica.add(LocArco);
+      end;
+
+     if tipoelem='CIRCLE' then
+      begin
+        LocCerchio:=TCerchio.create(value10,value20,value30,value40);
+        LocPiano.Grafica.add(Loccerchio);
+      end;
+
+     if tipoelem='INSERT' then
+      begin
+        locblocco:= TSimbolo.Create(value10,value20,value30,value41,value42,value50,value2);
+        LocPiano.Grafica.add(LocBlocco);
+      end;
+
+     on2 :=False; on8:=False;
+     on10:=False; on20:=False; on30:=False;  on40:=False;  on50:=False; on70:=False;
+     on11:=False; on21:=False; on31:=False;  on51:=False;
+     on41:=False; on42:=False;
+     value1:=''; value2:=''; value8:='';
+     value10:=0; value20:=0; value30:=0;  value40:=0;  value50:=0; value70:=0;
+     value11:=0; value21:=0; value31:=0;  value51:=0;
+     value41:=1; value42:=1;
+   end;
+
+ begin
+   rigae:=''; tipoelem:='';  value8:='';
+   while ((rigae<>'ENDSEC') and (not(eof(F)))  ) do
+    begin
+     readln(F,rigae);  RipulireSpazioFondo(rigae);
+     {      ConoscoCodice :=False;}
+       if (rigae='  0') then begin attuare; readln(F,tipoelem);  RipulireSpazioFondo(tipoelem); end;
+       if (rigae='   0') then begin attuare; readln(F,tipoelem); RipulireSpazioFondo(tipoelem); end;
+     -  if (rigae='  1') then begin if not(eof(F)) then readln(F,value1); RipulireSpazioFondo(value1); on1:=True;  end;
+     -  if (rigae= '  2') then begin if not(eof(F)) then readln(F,value2); RipulireSpazioFondo(value2); on2:=True;  end;
+  --     if (rigae='  8') then begin if not(eof(F)) then readln(F,value8); RipulireSpazioFondo(value8); on8:=True;  end;
+     -  if (rigae=' 10') then begin if not(eof(F)) then readln(F,value10); aggiornacontariga; on10:=True; end;
+     -  if (rigae=' 20') then begin if not(eof(F)) then readln(F,value20); aggiornacontariga; on20:=True; end;
+     -  if (rigae=' 30') then begin if not(eof(F)) then readln(F,value30); aggiornacontariga; on30:=True; end;
+     -  if (rigae=' 40') then begin if not(eof(F)) then readln(F,value40); aggiornacontariga; on40:=True; end;
+     -  if (rigae=' 41') then begin if not(eof(F)) then readln(F,value41); aggiornacontariga; on41:=True; end;
+     -  if (rigae=' 42') then begin if not(eof(F)) then readln(F,value42); aggiornacontariga; on42:=True; end;
+     -  if (rigae=' 50') then begin if not(eof(F)) then readln(F,value50); aggiornacontariga; on50:=True; end;
+     -  if (rigae=' 70') then begin if not(eof(F)) then readln(F,value70); aggiornacontariga; on70:=True; end;
+    -   if (rigae=' 11') then begin if not(eof(F)) then readln(F,value11); aggiornacontariga; on11:=True; end;
+    -   if (rigae=' 21') then begin if not(eof(F)) then readln(F,value21); aggiornacontariga; on21:=True; end;
+    -   if (rigae=' 31') then begin if not(eof(F)) then readln(F,value31); aggiornacontariga; on31:=True; end;
+    -   if (rigae=' 51') then begin if not(eof(F)) then readln(F,value51); aggiornacontariga; on51:=True; end;
+     rigae:=tipoelem;
+
+     if tipoelem='LWPOLYLINE' then
+      begin
+       stoplwpoly:=False;
+       value90:=0;       valore70:=0;
+       while Not(stoplwpoly) do
+        begin
+         readln(F,rigae);  RipulireSpazioFondo(rigae);
+         // capisco il piano
+         if (rigae='  8') then
+          begin
+           readln(F,value8); RipulireSpazioFondo(value8);
+           numll:=dammiNumpianoPlus(value8,0,0,0,'');
+           LocPiano:=disegnocorrente.listapiani.items[numll];
+          end;
+         if (rigae=' 90') then
+          begin
+           readln(F,value90);
+           LocPoliLinea2:=TPLinea.create(False);
+           LocPiano.Grafica.add(LocPoliLinea2);
+          end;
+         if (rigae=' 70') then
+          begin readln(F,value70); valore70:=trunc(value70); end;
+
+         if (rigae=' 10') then
+          begin readln(F,value10); aggiornacontariga; on10:=True; end;
+         if (rigae=' 20') then
+          begin
+           readln(F,value20); aggiornacontariga; on20:=True;
+           LocPolilinea2.Aggiungi2(value10,value20,0,0);
+           dec(value90);
+           if value90=0 then
+            begin
+             stoplwpoly:=True;
+             if odd(valore70) then
+              begin
+               LocPolilinea2.chiudi;
+               vt1:=LocPolilinea2.spezzata.Items[0];
+               LocPolilinea2.Aggiungi2(vt1.x,vt1.y,vt1.z,0);
+              end;
+            end;
+          end;
+        end;
+      end;
+
+
+    end;
+ end;
+ { zona della lettura grrafica disegno FINE }
+
+
+
+
+procedure dxfInNew(nome:string);
+var    linea : string;
+       locdisegno : TDisegno;
+       tt : String;
+
+
+ { zona di lettura blocchi definizione }
+ procedure leggiblocchi;
+ var rigablo : string;
+  procedure leggibloco;
+   var rigabo : string;
+       definito : boolean;
+       defsimboloIN :TDefSimbolo;
+       elefase : String;
+       on1,on2 : Boolean;
+       on10,on20,on30,on40,on50,on70 : Boolean;
+       on11,on21,on31,on51 : Boolean;
+       on41,on42 : Boolean;
+       value1, value2 : String;
+       value10,value20,value30,value40,value50,value70 : Extended;
+       value11,value21,value31,value51 : Extended;
+       value41,value42 : Extended;
+       LocPunto : TPunto;
+       LocLinea : TLinea;
+       LocCerchio : Tcerchio;
+       LocArco    : TArco;
+       xar1,yar1,xar2,yar2 : Extended;
+       LocPolilinea : TPlinea;
+       locblocco : TSimbolo;
+       LocTesto : TTesto;
+      procedure attuarre;
+      begin
+       if elefase='' then exit;
+{
+       if elefase='3DFACE' then messagebeep(0);
+       if elefase='ATTDEF' then messagebeep(0);
+       if elefase='ATTRIB' then messagebeep(0);
+}
+//         if defsimboloIN.nome='S008' then messagebeep(0);
+
+       if elefase='ARC' then
+        begin
+         if (on10 and on20 and on40 and on50 and on51) then
+          begin
+           xar1:=value10+sin(value50*pi/180);
+           yar1:=value20+cos(value50*pi/180);
+           xar2:=value10+sin(value51*pi/180);
+           yar2:=value20+cos(value51*pi/180);
+           LocArco:=TArco.create(value10,value20,value30, xar1,yar1,0, xar2,yar2,0,value40);
+           defsimboloIN.Elementi.add(LocArco);
+          end;
+        end;
+        
+       if elefase='CIRCLE' then
+        begin
+         if (on10 and on20 and on40) then
+          begin
+           LocCerchio:=TCerchio.create(value10,value20,value30,value40);
+           defsimboloIN.Elementi.add(Loccerchio);
+          end;
+        end;
+{       if elefase='DIMENSION' then messagebeep(0);}
+       if elefase='INSERT' then
+        begin
+         if ( on2 and on10 and on20 and on30 ) then
+         begin
+          locblocco:= TSimbolo.Create(value10,value20,value30,value41,value42,value50,value2);
+          defsimboloIN.Elementi.add(LocBlocco);
+         end;
+        end;
+       if elefase='LINE' then
+        begin
+         if (on10 and on20 and on11 and on21) then
+          begin LocLinea:=TLinea.create(value10,value20,value30,value11,value21,value31,0,0);
+                defsimboloIN.Elementi.add(LocLinea);
+          end;
+        end;
+       if elefase ='TEXT' Then
+        begin
+         if on50 then value50:=0;
+//         str(value50:0:4,tt); lamcadForm.caption:=tt; lamcadForm.update;
+         LocTesto:=TTesto.Create(value10,value20,value30,value10,value20,value1,value40,value50);
+         LocTesto.Riaggiornalimiti;
+         defsimboloIN.Elementi.add(LocTesto);
+        end;
+
+
+        if elefase='POINT' then
+        begin
+         if on10 and on20 then
+          begin locPunto:=TPunto.create(value10,value20,value30); defsimboloIN.Elementi.add(LocPunto); end;
+        end;
+       if elefase='POLYLINE' then
+        begin
+         if odd(round(value70)) then LocPolilinea:=TPlinea.create(True)
+                                else LocPolilinea:=TPlinea.create(False);
+         defsimboloIN.Elementi.add(LocPolilinea);
+        end;
+{       if elefase='SEQEND' then messagebeep(0);}
+       if elefase='SHAPE' then messagebeep(0);
+       if elefase='SOLID' then messagebeep(0);
+
+
+       if elefase='TEXT' then
+       begin
+        value50:=0;
+        LocTesto:=TTesto.Create(value10,value20,value30,value10,value20,value1,value40,value50);
+        LocTesto.riaggiornalimiti;
+        defsimboloIN.Elementi.add(LocTesto);
+       end;
+
+
+       if elefase='TRACE' then messagebeep(0);
+       if elefase='VERTEX' then
+        begin
+         if ( on10 and on20 ) then
+          begin
+           if locpolilinea.spezzata.count=0
+              then LocPolilinea.aggiungi1(value10,value20,value30,0)
+              else LocPolilinea.aggiungi2(value10,value20,value30,0);
+          end;
+        end;
+
+       on1:=False; on2 :=False;
+       on10:=False; on20:=False; on30:=False;  on40:=False;  on50:=False; on70:=False;
+       on11:=False; on21:=False; on31:=False;  on51:=False;
+       on41:=False; on42:=False;
+       value2:='';
+       value10:=0; value20:=0; value30:=0;  value40:=0;  value50:=0; value70:=0;
+       value11:=0; value21:=0; value31:=0;  value51:=0;
+       value41:=1; value42:=1;
+
+      end;
+   begin
+    rigabo:='';  definito:=False; elefase:='';
+    while ((rigabo<>'ENDBLK') and (not(eof(F)))  ) do
+     begin
+      if not(eof(F)) then begin readln(F,rigabo);  RipulireSpazioFondo(rigabo); end;
+
+      if ((rigabo='  2') and (not(definito)) ) then
+       begin
+        readln(F,rigabo);   RipulireSpazioFondo(rigabo);   defsimboloIN :=TDefSimbolo.create(rigabo);
+        Locdisegno.listaDefSimboli.add(defsimboloIN);
+        definito:=True; continue;
+       end;
+      if ((rigabo='  0') and definito ) then
+       begin
+        attuarre;
+         if not(eof(F)) then begin readln(F,rigabo);  RipulireSpazioFondo(rigabo); end;
+        elefase:=rigabo;
+       end;
+
+      if (rigabo='  1') then begin if not(eof(F)) then readln(F,value1);  aggiornacontariga; on1:=True;  end;
+      if (rigabo='  2') then begin if not(eof(F)) then readln(F,value2);  aggiornacontariga; on2:=True;  end;
+      if (rigabo=' 10') then begin if not(eof(F)) then readln(F,value10); aggiornacontariga; on10:=True; end;
+      if (rigabo=' 20') then begin if not(eof(F)) then readln(F,value20); aggiornacontariga; on20:=True; end;
+      if (rigabo=' 30') then begin if not(eof(F)) then readln(F,value30); aggiornacontariga; on30:=True; end;
+      if (rigabo=' 40') then begin if not(eof(F)) then readln(F,value40); aggiornacontariga; on40:=True; end;
+      if (rigabo=' 41') then begin if not(eof(F)) then readln(F,value41); aggiornacontariga; on41:=True; end;
+      if (rigabo=' 42') then begin if not(eof(F)) then readln(F,value42); aggiornacontariga; on42:=True; end;
+      if (rigabo=' 50') then begin if not(eof(F)) then readln(F,value50); aggiornacontariga; on50:=True; end;
+      if (rigabo=' 70') then begin if not(eof(F)) then readln(F,value70); aggiornacontariga; on70:=True; end;
+      if (rigabo=' 11') then begin if not(eof(F)) then readln(F,value11); aggiornacontariga; on11:=True; end;
+      if (rigabo=' 21') then begin if not(eof(F)) then readln(F,value21); aggiornacontariga; on21:=True; end;
+      if (rigabo=' 31') then begin if not(eof(F)) then readln(F,value31); aggiornacontariga; on31:=True; end;
+      if (rigabo=' 51') then begin if not(eof(F)) then readln(F,value51); aggiornacontariga; on51:=True; end;
+     end;
+   end;
+
+  begin
+   rigablo:='';
+   while ((rigablo<>'ENDSEC') and (not(eof(F)))  ) do
+    begin
+     readln(F,rigablo);aggiornacontariga;
+//     lamcadform.caption:=rigablo;
+     if rigablo='BLOCK' then leggibloco;
+    end;
+  end;
+ { zona di lettura blocchi definizione FINE }
+
+  { zona della intestazione dxf }
+ procedure leggiheader;
+ var rigah : string;
+  begin
+   rigah:='';
+   while ((rigah<>'ENDSEC') and (not(eof(F)))  ) do
+    begin
+     readln(F,rigah); aggiornacontariga;
+    end;
+  end;
+  { zona della intestazione dxf FINE}
+
+ { zona di letturra tavole }
+ procedure leggitavole;
+ var rigaT : String;
+  procedure leggiLAYERS;
+
+    procedure leggiLAYERO;
+     var
+      nomeL : String;
+      value70,value62 : Integer;
+      value6 : String;
+      LocPiano : TPiano;
+     begin
+      while rigat<>'  0' do
+       begin
+        if not(eof(F)) then readln(F,rigat);aggiornacontariga;
+        if rigat='  2' then  begin if not(eof(F)) then readln(F,NomeL); aggiornacontariga;  end;
+        if rigat=' 70' then  begin if not(eof(F)) then readln(F,Value70); aggiornacontariga;  end;
+        if rigat=' 62' then  begin if not(eof(F)) then readln(F,Value62); aggiornacontariga;  end;
+        if rigat='  6' then  begin if not(eof(F)) then readln(F,Value6); aggiornacontariga;  end;
+       end;
+       { qui a seconda del modo di importazione si deve fare attenzione alla aggiunta o merge }
+        if NomeL<>'0' then
+         begin
+          LocPiano:=TPiano.Create(NomeL); DisegnoCorrente.ListaPiani.add(LocPiano);
+          LocPiano.tipolinea:=0;    { qui bisogna caricare prima i tipi di linea e poi assegnarne l'indice }
+          if Value62<0 then begin Value62:=abs(Value62); LocPiano.visibile:=False; end;
+          LocPiano.Indcolor:=value62;
+          value62:=0; value6:=''; value70:=0; NomeL:='DXFINERROR';
+         end;
+     end;
+
+   begin
+    while ((rigat<>'ENDTAB') and (not(eof(F)))  ) do
+     begin
+      readln(F,rigat);aggiornacontariga;
+      if rigat='LAYER' then leggiLAYERO;
+     end;
+   end;
+ begin
+   while ((rigat<>'ENDSEC') and (not(eof(F)))  ) do
+    begin
+     readln(F,rigat);aggiornacontariga;
+     if ( (rigat='  2') and (not(eof(F))) ) then
+      begin
+       readln(F,rigat);aggiornacontariga;
+       if rigat='LAYER' then leggiLAYERS;
+      end;
+    end;
+ end;
+ { zona di letturra tavole FINE}
+
+
+begin
+ contariga:=0;
+ locdisegno:=progetto.listadisegni.Items[progetto.IndDisegnoCorrente];
+ assignFile(F,nome); reset(F);
+ while not(eof(F)) do
+ begin
+  readln(F,linea); aggiornacontariga;
+  if linea='SECTION' then
+   begin
+    readln(F,linea); aggiornacontariga; readln(F,linea);aggiornacontariga;
+    if linea='EOF' then break;
+     if linea='HEADER' then leggiheader;
+     if linea='TABLES' then  leggitavole;
+     if linea='BLOCKS' then leggiblocchi;
+     if linea='ENTITIES' then leggiEntita;
+   end;
+ end;
+ closeFile(F);
+end;
+
+
+
+
+procedure Salvadxf(nome:String;testazio,Roma,EsportoPenup:boolean;dim2D:Byte;ColoriTavola:Boolean);
+var kp,ke,kv,kpol : Integer;
+    locpiano : TPiano;
+    locgraf : TGrafico;
+    FDXF  : TextFile;
+    locpunto  : TPunto;
+    locLinea  : TLinea;
+    locPLinea : TPlinea;
+    locreg    : TRegione;
+    locArc    : TArco;
+    locCerchio : TCerchio;
+    locTesto   : TTesto;
+    locQuota   : TQuota;
+    locSimbolo : TSimbolo;
+    locCivico  : TCivico;
+    locMultiTesto : TMultiTesto;
+    locasse : TStrada;
+    alfa : Extended;
+    VT : TVertex;
+    tt : String;
+    kmmt : Integer;
+
+    pennaSu : Boolean;
+    finalevt, finaleprec : Integer;
+    listaVT : TList;
+    kji,kllvt : Integer;
+    namss,ttCControl,nomepiano : String;
+    ttFont : String;
+ function dammifonteTesto(illotesto:TTesto;ilpiano:TPiano): String;
+ var InfoFont2 : TInfoFont;
+  begin
+   result:='DEFAULT';
+   case illotesto.fonte of
+    -1 :
+     begin
+      InfoFont2 := Disegnocorrente.ListaDefFont.items[ilpiano.Font];
+      result:=InfoFont2.nome;
+     end;
+     0 : begin result:='ARIAL'; end;
+     else
+      begin
+       InfoFont2 := Disegnocorrente.ListaDefFont.items[illotesto.Fonte];
+       result:=InfoFont2.nome;
+      end;
+   end;
+  end;
+
+
+procedure intestatione;
+var kl : Integer;
+    strTcolor : String;
+    MioColoreRGB : TColor;
+    redComp,GreenComp,BluComp : Byte;
+begin
+ writeln(FDXF,'  0'); writeln(FDXF,'SECTION');
+ writeln(FDXF,'  2'); writeln(FDXF,'HEADER');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ACADVER');   writeln(FDXF,'  1'); writeln(FDXF,'AC1006');
+ writeln(FDXF,'  9'); writeln(FDXF,'$INSBASE');   writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+ writeln(FDXF,' 20'); writeln(FDXF,'0.0');        writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$EXTMIN');    writeln(FDXF,' 10'); writeln(FDXF,'112.69');
+ writeln(FDXF,' 20'); writeln(FDXF,'180.42');     writeln(FDXF,' 30'); writeln(FDXF,'0.00');
+ writeln(FDXF,'  9'); writeln(FDXF,'$EXTMAX');    writeln(FDXF,' 10'); writeln(FDXF,'334.04');
+ writeln(FDXF,' 20'); writeln(FDXF,'230.36');     writeln(FDXF,' 30'); writeln(FDXF,'0.00');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LIMMIN');
+ writeln(FDXF,' 10'); writeln(FDXF,'0.0');        writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LIMMAX');
+ writeln(FDXF,' 10'); writeln(FDXF,'410.0');      writeln(FDXF,' 20'); writeln(FDXF,'287.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ORTHOMODE'); writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$REGENMODE'); writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$FILLMODE');  writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$QTEXTMODE'); writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$MIRRTEXT');  writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DRAGMODE');  writeln(FDXF,' 70'); writeln(FDXF,'     2');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LTSCALE');   writeln(FDXF,' 40'); writeln(FDXF,'25.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$OSMODE');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ATTMODE');   writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TEXTSIZE');  writeln(FDXF,' 40'); writeln(FDXF,'3.5');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TRACEWID');  writeln(FDXF,' 40'); writeln(FDXF,'1.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TEXTSTYLE'); writeln(FDXF,'  7'); writeln(FDXF,'STANDARD');
+ writeln(FDXF,'  9'); writeln(FDXF,'$CLAYER');    writeln(FDXF,'  8'); writeln(FDXF,'0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$CELTYPE');   writeln(FDXF,'  6'); writeln(FDXF,'BYLAYER');
+ writeln(FDXF,'  9'); writeln(FDXF,'$CECOLOR');   writeln(FDXF,' 62'); writeln(FDXF,'   256');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSCALE');  writeln(FDXF,' 40'); writeln(FDXF,'1.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMASZ');    writeln(FDXF,' 40'); writeln(FDXF,'3.5');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMEXO');    writeln(FDXF,' 40'); writeln(FDXF,'0.1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMDLI');    writeln(FDXF,' 40'); writeln(FDXF,'7.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMRND');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMDLE');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMEXE');    writeln(FDXF,' 40'); writeln(FDXF,'1.8');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTP');     writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTM');     writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTXT');    writeln(FDXF,' 40'); writeln(FDXF,'3.5');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMCEN');    writeln(FDXF,' 40'); writeln(FDXF,'1.5');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTSZ');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTOL');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMLIM');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTIH');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTOH');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSE1');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSE2');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTAD');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMZIN');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMBLK');    writeln(FDXF,'  1'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMASO');    writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSHO');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMPOST');   writeln(FDXF,'  1'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMAPOST');  writeln(FDXF,'  1'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMALT');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMALTD');   writeln(FDXF,' 70'); writeln(FDXF,'     2');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMALTF');   writeln(FDXF,' 40'); writeln(FDXF,'25.4');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMLFAC');   writeln(FDXF,' 40'); writeln(FDXF,'1.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTOFL');   writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTVP');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMTIX');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSOXD');   writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMSAH');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMBLK1');   writeln(FDXF,'  1'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$DIMBLK2');   writeln(FDXF,'  1'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LUNITS');    writeln(FDXF,' 70'); writeln(FDXF,'     2');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LUPREC');    writeln(FDXF,' 70'); writeln(FDXF,'     2');
+ writeln(FDXF,'  9'); writeln(FDXF,'$AXISMODE');  writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$AXISUNIT');  writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+                                                  writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SKETCHINC'); writeln(FDXF,' 40'); writeln(FDXF,'1.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$FILLETRAD'); writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$AUNITS');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$AUPREC');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$MENU');      writeln(FDXF,'  1'); writeln(FDXF,'ACAD');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ELEVATION'); writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$THICKNESS'); writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$LIMCHECK');  writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$BLIPMODE');  writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$CHAMFERA');  writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$CHAMFERB');  writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SKPOLY');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TDCREATE');  writeln(FDXF,' 40'); writeln(FDXF,'2450033.2510087965');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TDUPDATE');  writeln(FDXF,' 40'); writeln(FDXF,'2450033.2510087965');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TDINDWG');   writeln(FDXF,' 40'); writeln(FDXF,'0.0000000000');
+ writeln(FDXF,'  9'); writeln(FDXF,'$TDUSRTIMER');writeln(FDXF,' 40'); writeln(FDXF,'0.0000000000');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USRTIMER');  writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ANGBASE');   writeln(FDXF,' 50'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ANGDIR');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$PDMODE');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$PDSIZE');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$PLINEWID');  writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$COORDS');    writeln(FDXF,' 70'); writeln(FDXF,'     2');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SPLFRAME');  writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SPLINETYPE');writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SPLINESEGS');writeln(FDXF,' 70'); writeln(FDXF,'     8');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ATTDIA');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$ATTREQ');    writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  9'); writeln(FDXF,'$HANDLING');  writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$HANDSEED');  writeln(FDXF,'  5'); writeln(FDXF,'0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SURFTAB1');  writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SURFTAB2');  writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SURFTYPE');  writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SURFU');     writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$SURFV');     writeln(FDXF,' 70'); writeln(FDXF,'     6');
+ writeln(FDXF,'  9'); writeln(FDXF,'$FLATLAND');  writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$UCSNAME');   writeln(FDXF,'  2'); writeln(FDXF,'');
+ writeln(FDXF,'  9'); writeln(FDXF,'$UCSORG');    writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+                                                  writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+                                                  writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$UCSXDIR');   writeln(FDXF,' 10'); writeln(FDXF,'1.0');
+                                                  writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+                                                  writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$UCSYDIR');   writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+                                                  writeln(FDXF,' 20'); writeln(FDXF,'1.0');
+                                                  writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERI1');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERI2');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERI3');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERI4');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERI5');    writeln(FDXF,' 70'); writeln(FDXF,'     0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERR1');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERR2');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERR3');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERR4');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$USERR5');    writeln(FDXF,' 40'); writeln(FDXF,'0.0');
+ writeln(FDXF,'  9'); writeln(FDXF,'$WORLDVIEW'); writeln(FDXF,' 70'); writeln(FDXF,'     1');
+ writeln(FDXF,'  0'); writeln(FDXF,'ENDSEC');
+ writeln(FDXF,'  0'); writeln(FDXF,'SECTION');    writeln(FDXF,'  2');
+
+ writeln(FDXF,'TABLES');    writeln(FDXF,'  0');  writeln(FDXF,'TABLE');     writeln(FDXF,'  2');
+ writeln(FDXF,'VPORT');     writeln(FDXF,' 70');  writeln(FDXF,'     2');    writeln(FDXF,'  0');
+ writeln(FDXF,'VPORT');     writeln(FDXF,'  2');  writeln(FDXF,'*ACTIVE');   writeln(FDXF,' 70');
+ writeln(FDXF,'     0');    writeln(FDXF,' 10');  writeln(FDXF,'0.0');       writeln(FDXF,' 20');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 11');  writeln(FDXF,'1.0');       writeln(FDXF,' 21');
+ writeln(FDXF,'1.0');       writeln(FDXF,' 12');  writeln(FDXF,'230.206845');writeln(FDXF,' 22');
+ writeln(FDXF,'166.729216');writeln(FDXF,' 13');  writeln(FDXF,'0.0');       writeln(FDXF,' 23');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 14');  writeln(FDXF,'1.0');       writeln(FDXF,' 24');
+ writeln(FDXF,'1.0');       writeln(FDXF,' 15');  writeln(FDXF,'10.0');      writeln(FDXF,' 25');
+ writeln(FDXF,'10.0');      writeln(FDXF,' 16');  writeln(FDXF,'0.0');       writeln(FDXF,' 26');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 36');  writeln(FDXF,'1.0');       writeln(FDXF,' 17');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 27');  writeln(FDXF,'0.0');       writeln(FDXF,' 37');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 40');  writeln(FDXF,'333.458431');writeln(FDXF,' 41');
+ writeln(FDXF,'1.380723');  writeln(FDXF,' 42');  writeln(FDXF,'50.0');      writeln(FDXF,' 43');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 44');  writeln(FDXF,'0.0');       writeln(FDXF,' 50');
+ writeln(FDXF,'0.0');       writeln(FDXF,' 51');  writeln(FDXF,'0.0');       writeln(FDXF,' 71');
+ writeln(FDXF,'     0');    writeln(FDXF,' 72');  writeln(FDXF,'   100');    writeln(FDXF,' 73');
+ writeln(FDXF,'     1');    writeln(FDXF,' 74');  writeln(FDXF,'     1');    writeln(FDXF,' 75');
+ writeln(FDXF,'     0');    writeln(FDXF,' 76');  writeln(FDXF,'     0');    writeln(FDXF,' 77');
+ writeln(FDXF,'     0');    writeln(FDXF,' 78');  writeln(FDXF,'     0');    writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');  writeln(FDXF,'TABLE');     writeln(FDXF,'  2');
+ writeln(FDXF,'LTYPE');     writeln(FDXF,' 70');  writeln(FDXF,'     1');    writeln(FDXF,'  0');
+ writeln(FDXF,'LTYPE');     writeln(FDXF,'  2');  writeln(FDXF,'CONTINUOUS');writeln(FDXF,' 70');
+ writeln(FDXF,'    64');    writeln(FDXF,'  3');  writeln(FDXF,'Linea continua');writeln(FDXF,' 72');
+ writeln(FDXF,'    65');    writeln(FDXF,' 73');  writeln(FDXF,'     0');    writeln(FDXF,' 40');
+ writeln(FDXF,'0.0');       writeln(FDXF,'  0');  writeln(FDXF,'ENDTAB');
+
+ writeln(FDXF,'  0');    writeln(FDXF,'TABLE');
+ writeln(FDXF,'  2');    writeln(FDXF,'LAYER');  writeln(FDXF,' 70');  writeln(FDXF,'     1');
+
+ writeln(FDXF,'  0');  writeln(FDXF,'LAYER');
+ writeln(FDXF,'  2');  writeln(FDXF,'0');      writeln(FDXF,' 70');  writeln(FDXF,'     0');
+ writeln(FDXF,' 62');  writeln(FDXF,'     7'); writeln(FDXF,'  6');  writeln(FDXF,'CONTINUOUS');
+
+ { introduzione dei layers che si posseggono nell'attuale disegno }
+ for kl:=1 to disegnocorrente.listapiani.count-1 do
+  begin
+   locpiano:=disegnocorrente.listapiani.Items[kl];
+   if ((locpiano.nome[length(locpiano.nome)]='I') and (locpiano.nome[length(locpiano.nome)-1]='_')) then
+    begin
+     if not(EsportoPenup) then continue;
+    end;
+
+   writeln(FDXF,'  0');  writeln(FDXF,'LAYER');
+   writeln(FDXF,'  2');
+   nomepiano:=locpiano.nome;
+   writeln(FDXF,nomepiano);
+
+   writeln(FDXF,' 70');  writeln(FDXF,'     0');
+   writeln(FDXF,' 62');
+
+   MioColoreRGB:=locpiano.colore;
+   redComp:=MioColoreRGB mod 256;
+   MioColoreRGB:=MioColoreRGB-redComp;  MioColoreRGB:=MioColoreRGB div 256;
+   GreenComp:=MioColoreRGB mod 256;
+   MioColoreRGB:=MioColoreRGB-GreenComp;  MioColoreRGB:=MioColoreRGB div 256;
+   BluComp:=MioColoreRGB mod 256;
+   MioColoreRGB:=MioColoreRGB-BluComp;  MioColoreRGB:=MioColoreRGB div 256;
+
+   strTcolor:='     7';
+   if ((redComp=BluComp) and (redComp=GreenComp))           then strTcolor:='     8';
+   if ((redComp=0) and (GreenComp>0) and (BluComp>0))       then strTcolor:='     4';
+   if ((redComp>0) and (GreenComp=0) and (BluComp>0))       then strTcolor:='    11';
+   if ((redComp=255) and (GreenComp=255) and (BluComp=0))   then strTcolor:='     2';
+   if ((redComp=255) and (GreenComp=0) and (BluComp=255))   then strTcolor:='     6';
+   if ((redComp=0) and (GreenComp=0) and (BluComp>0))       then strTcolor:='     5';
+   if ((redComp=164) and (GreenComp=200) and (BluComp=240)) then strTcolor:='   141';
+   if ((redComp=0) and (GreenComp>0) and (BluComp=0))       then strTcolor:='     3';
+   if ((redComp=128) and (GreenComp=128) and (BluComp=64))  then strTcolor:='    56';
+
+   // colori autocad 1-9
+   if ((redComp=255) and (GreenComp=0) and (BluComp=0))     then strTcolor:='     1';
+   if ((redComp=255) and (GreenComp=255) and (BluComp=0))   then strTcolor:='     2';
+   if ((redComp=0) and (GreenComp=255) and (BluComp=0))     then strTcolor:='     3';
+   if ((redComp=0) and (GreenComp=255) and (BluComp=255))   then strTcolor:='     4';
+   if ((redComp=0) and (GreenComp=0) and (BluComp=255))     then strTcolor:='     5';
+   if ((redComp=255) and (GreenComp=0) and (BluComp=255))   then strTcolor:='     6';
+   if ((redComp=255) and (GreenComp=255) and (BluComp=255)) then strTcolor:='     7';
+   if ((redComp=128) and (GreenComp=128) and (BluComp=128)) then strTcolor:='     8';
+   if ((redComp=192) and (GreenComp=192) and (BluComp=192)) then strTcolor:='     9';
+
+   if Not(locpiano.visibile) then
+    begin
+     strTcolor:='    -7';
+     if ((redComp=BluComp) and (redComp=GreenComp))           then strTcolor:='    -8';
+     if ((redComp=0) and (GreenComp>0) and (BluComp>0))       then strTcolor:='    -4';
+     if ((redComp>0) and (GreenComp=0) and (BluComp>0))       then strTcolor:='   -11';
+     if ((redComp=255) and (GreenComp=255) and (BluComp=0))   then strTcolor:='    -2';
+     if ((redComp=255) and (GreenComp=0) and (BluComp=255))   then strTcolor:='    -6';
+     if ((redComp=0) and (GreenComp=0) and (BluComp>0))       then strTcolor:='    -5';
+     if ((redComp=164) and (GreenComp=200) and (BluComp=240)) then strTcolor:='  -141';
+     if ((redComp=0) and (GreenComp>0) and (BluComp=0))       then strTcolor:='    -3';
+     if ((redComp=128) and (GreenComp=128) and (BluComp=64))  then strTcolor:='   -56';
+    end;
+
+
+   if ColoriTavola then
+    begin
+     if locpiano.indcolor=0 then
+      begin if locpiano.visibile then strTcolor:='     7' else strTcolor:='    -7';  end
+     else
+     str(locpiano.indcolor:6,strTcolor);
+    end;
+
+   writeln(FDXF,strTcolor);
+   writeln(FDXF,'  6');  writeln(FDXF,'CONTINUOUS');
+  end;
+
+ writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');
+ writeln(FDXF,'TABLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'STYLE');
+ writeln(FDXF,' 70');       writeln(FDXF,'     1');
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'STANDARD');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'3.5');
+ writeln(FDXF,'  3');       writeln(FDXF,'txt');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'ROMANS');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'3.5');
+ writeln(FDXF,'  3');       writeln(FDXF,'romans.shx');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'COMPLEX');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'3.5');
+ writeln(FDXF,'  3');       writeln(FDXF,'complex.shx');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'ARIAL');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'3.5');
+ writeln(FDXF,'  3');       writeln(FDXF,'txt');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'ISOCP');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'3.5');
+ writeln(FDXF,'  3');       writeln(FDXF,'isocp.shx');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+ writeln(FDXF,'  0');       writeln(FDXF,'STYLE');
+ writeln(FDXF,'  2');       writeln(FDXF,'GREEK1');
+ writeln(FDXF,' 70');       writeln(FDXF,'     0');
+ writeln(FDXF,' 40');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 41');       writeln(FDXF,'1.0');
+ writeln(FDXF,' 50');       writeln(FDXF,'0.0');
+ writeln(FDXF,' 71');       writeln(FDXF,'     0');
+ writeln(FDXF,' 42');       writeln(FDXF,'25.0');
+ writeln(FDXF,'  3');       writeln(FDXF,'greekc.shx');
+ writeln(FDXF,'  4');       writeln(FDXF,'');
+
+
+ writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');
+ writeln(FDXF,'TABLE');     writeln(FDXF,'  2');
+ writeln(FDXF,'VIEW');      writeln(FDXF,' 70');  writeln(FDXF,'     0');    writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');  writeln(FDXF,'TABLE');     writeln(FDXF,'  2');
+ writeln(FDXF,'UCS');       writeln(FDXF,' 70');  writeln(FDXF,'     0');    writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');  writeln(FDXF,'TABLE');     writeln(FDXF,'  2');
+ writeln(FDXF,'DWGMGR');    writeln(FDXF,' 70');  writeln(FDXF,'     0');    writeln(FDXF,'  0');
+ writeln(FDXF,'ENDTAB');    writeln(FDXF,'  0');  writeln(FDXF,'ENDSEC');    writeln(FDXF,'  0');
+end;
+
+
+function ripassanomeblocco(tetblo:string): String;
+var nomescrivo ,nnini: String;
+    llnnini : Integer;
+    kj : Integer;
+    momen : string;
+begin
+ ripassanomeblocco:='';
+ nnini:=ExtractFileName(disegnocorrente.nome);
+ llnnini:=length(nnini)-3;
+ momen:=tetblo[2]+tetblo[llnnini+3]+tetblo[llnnini+6]+tetblo[llnnini+7];
+ for kj:=llnnini+8 to length(tetblo) do
+ momen:=momen+tetblo[kj];
+ ripassanomeblocco :=momen;
+end;
+
+
+procedure scriviblocchi;
+var ksy,ksyi,kvv  : Integer;
+    Locmemsymbol : TDefSimbolo;
+    IntGraf : TGrafico;
+    Blocpunto : TPunto;
+    BlocLinea : TLinea;
+    BlocPLinea : TPlinea;
+    BlocArc : TArco;
+    BlocCerchio : Tcerchio;
+    BlocTesto : TTesto;
+    VTI : TVertex;
+begin
+ writeln(FDXF,'SECTION');writeln(FDXF,'  2');
+ writeln(FDXF,'BLOCKS');
+  for ksy:=0 to disegnocorrente.ListaDefSimboli.count-1 do
+   begin
+    Locmemsymbol:=disegnocorrente.listaDefsimboli.Items[ksy];
+    if Locmemsymbol.elementi.count=0 then continue;
+
+    writeln(FDXF,'  0');
+    writeln(FDXF,'BLOCK');writeln(FDXF,'  8');writeln(FDXF,'0');
+    if Roma then
+     begin
+      if length(Locmemsymbol.nome) > 8 then
+       begin
+        writeln(FDXF,'  2'); writeln(FDXF,ripassanomeblocco(Locmemsymbol.nome));
+       end
+       else
+       begin
+        writeln(FDXF,'  2'); writeln(FDXF,Locmemsymbol.nome);
+       end;
+     end
+     else
+       begin
+        writeln(FDXF,'  2');
+        namss:=Locmemsymbol.nome;
+        if namss[1]='#' then namss[1]:='X';
+        if namss[1]='*' then namss[1]:='X';
+        writeln(FDXF,namss);
+       end;
+
+
+     writeln(FDXF,' 70'); writeln(FDXF,'     0');
+//     writeln(FDXF,' 70'); writeln(FDXF,'    64');
+
+     writeln(FDXF,' 10');writeln(FDXF,'0.0');
+     writeln(FDXF,' 20');writeln(FDXF,'0.0');   writeln(FDXF,' 30');writeln(FDXF,'0.0');
+     for ksyi:=0 to Locmemsymbol.elementi.count-1 do
+     begin
+      IntGraf:=Locmemsymbol.elementi.Items[ksyi];
+      case IntGraf.tipo of
+       'P' :
+        begin
+         Blocpunto:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'POINT');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         str(Blocpunto.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+         str(Blocpunto.Y :0:numdecimali,tt); writeln(FDXF,' 20');  writeln(FDXF,tt);
+         if dim2D>2 then
+         begin
+          str(Blocpunto.Z :0:numdecimali,tt); writeln(FDXF,' 30');  writeln(FDXF,tt);
+         end;
+        end;
+       'L' :
+        begin
+         BlocLinea:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'LINE');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         str(BlocLinea.vertice1.X :0:numdecimali,tt);  writeln(FDXF,' 10'); writeln(FDXF,tt);
+         str(BlocLinea.vertice1.Y :0:numdecimali,tt);  writeln(FDXF,' 20'); writeln(FDXF,tt);
+         if dim2D>2 then
+         begin
+          str(BlocLinea.vertice1.Z :0:numdecimali,tt);  writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+         str(BlocLinea.vertice2.X :0:numdecimali,tt);  writeln(FDXF,' 11'); writeln(FDXF,tt);
+         str(BlocLinea.vertice2.Y :0:numdecimali,tt);  writeln(FDXF,' 21'); writeln(FDXF,tt);
+         if dim2D>2 then
+         begin
+          str(BlocLinea.vertice2.Z :0:numdecimali,tt);  writeln(FDXF,' 31'); writeln(FDXF,tt);
+         end;
+        end;
+       'O', 'Y' :
+        begin
+         BlocPLinea:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'POLYLINE');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         writeln(FDXF,' 66'); writeln(FDXF,'     1');
+         writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+         writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+         writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+         if dim2D>2 then
+          begin
+           writeln(FDXF,' 70'); if IntGraf.tipo = 'O' then writeln(FDXF,'     8')
+                                                      else writeln(FDXF,'     9');
+          end
+          else
+          begin
+           writeln(FDXF,' 70'); if IntGraf.tipo = 'O' then writeln(FDXF,'     0')
+                                                      else writeln(FDXF,'     1');
+          end;
+         for kvv := 0 to BlocPLinea.spezzata.count-1 do
+          begin
+           VTI:=BlocPLinea.spezzata.items[kvv];
+           writeln(FDXF,'  0'); writeln(FDXF,'VERTEX');
+           writeln(FDXF,'  8'); writeln(FDXF,'0');
+           str(VTI.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+           str(VTI.Y :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+           if dim2D>2 then
+           begin
+            str(VTI.Z :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+            writeln(FDXF,' 70'); writeln(FDXF,'    32');
+           end;
+          end;
+         writeln(FDXF,'  0'); writeln(FDXF,'SEQEND');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+        end;
+       'A' :
+        begin
+         BlocArc:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'ARC');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         str(BlocArc.Xc :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+         str(BlocArc.Yc :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+         if dim2D>2 then
+          begin
+           str(BlocArc.Zc :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+          end;
+         str(BlocArc.Raggio :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+         alfa:=dammiangolo(BlocArc.x1,BlocArc.y1,BlocArc.xc,BlocArc.yc); alfa:=(alfa*180)/pi;
+         str(alfa :0:numdecimali,tt); writeln(FDXF,' 50'); writeln(FDXF,tt);
+         alfa:=dammiangolo(BlocArc.x2,BlocArc.y2,BlocArc.xc,BlocArc.yc); alfa:=(alfa*180)/pi;
+         str(alfa :0:numdecimali,tt); writeln(FDXF,' 51'); writeln(FDXF,tt);
+        end;
+       'C' :
+        begin
+         BlocCerchio:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'CIRCLE');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         str(BlocCerchio.Xc :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+         str(BlocCerchio.Yc :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+         if dim2D>2 then
+          begin
+           str(BlocCerchio.Zc :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+          end;
+         str(BlocCerchio.Raggio :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+        end;
+       'T' :
+        begin
+         BlocTesto:=Locmemsymbol.elementi.Items[ksyi];
+         writeln(FDXF,'  0'); writeln(FDXF,'TEXT');
+         writeln(FDXF,'  8'); writeln(FDXF,'0');
+         str(BlocTesto.Xpos :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+         str(BlocTesto.Ypos :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+         if dim2D>2 then
+          begin
+           str(BlocTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+          end;
+         str(BlocTesto.altezza :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+         ttCControl:=BlocTesto.caratteri;
+         if ttCControl[length(ttCControl)]='^' then ttCControl[length(ttCControl)]:='∞';
+         writeln(FDXF,'  1'); writeln(FDXF,ttCControl);
+         writeln(FDXF,' 50'); writeln(FDXF,BlocTesto.angolo:0:numdecimali);
+
+         if ((BlocTesto.Xpos<>BlocTesto.xpos2) or (BlocTesto.ypos<>BlocTesto.ypos2)) then
+          begin
+           writeln(FDXF,' 72'); writeln(FDXF,'     3');
+           str(BlocTesto.Xpos2 :0:numdecimali,tt); writeln(FDXF,' 11'); writeln(FDXF,tt);
+           str(BlocTesto.Ypos2 :0:numdecimali,tt); writeln(FDXF,' 21'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(BlocTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 31'); writeln(FDXF,tt);
+            end;
+          end;
+
+        end;
+       'S' :
+        begin
+         messagebeep(0);
+        end;
+      end;
+     end;
+     writeln(FDXF,'  0');writeln(FDXF,'ENDBLK');writeln(FDXF,'  8');writeln(FDXF,'0');
+   end;
+ writeln(FDXF,'  0');writeln(FDXF,'ENDSEC');
+end;
+
+begin
+ if VersioneNODXF then begin application.MessageBox('DXF OUT Disabilitato','Operazione Non eseguita', mb_OK);   exit; end;
+ listaVT:=Tlist.create;
+
+ assignFile(FDXF,nome); rewrite(FDXF);
+ if testazio then
+  begin
+   intestatione;
+   scriviblocchi;
+  end;
+
+ writeln(FDXF,'  0'); writeln(FDXF,'SECTION');
+ writeln(FDXF,'  2'); writeln(FDXF,'ENTITIES');
+
+ for kp:=0 to disegnocorrente.listapiani.count-1 do
+  begin
+   locpiano:=disegnocorrente.listapiani.Items[kp];
+
+/// attenzione da togliere dato che e' riferito a marche 10000
+   if ((locpiano.nome[1]='T') and (locpiano.nome[2]='O') and (locpiano.nome[3]='P')) then widthfactore:=True
+                                                                                     else widthfactore:=False;
+
+// widthfactore:=True;
+widthfactore:=False;
+
+   for ke:=0 to locpiano.grafica.count-1 do
+    begin
+     locgraf:=locpiano.grafica.Items[ke];
+     if locgraf.flag<>0 then continue;
+     case locgraf.tipo of
+      'P' :
+       begin
+        locpunto:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'POINT');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locpunto.X :0:numdecimali,tt);  writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locpunto.Y :0:numdecimali,tt); writeln(FDXF,' 20');  writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locpunto.Z :0:numdecimali,tt); writeln(FDXF,' 30');  writeln(FDXF,tt);
+         end;
+       end;
+      'L' :
+       begin
+        locLinea:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'LINE');
+        writeln(FDXF,'  8');
+        if (locLinea.vertice2.flagge=0) then writeln(FDXF,locpiano.nome) else  writeln(FDXF,locpiano.nome+'_I');
+        str(locLinea.vertice1.X :0:numdecimali,tt);  writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locLinea.vertice1.Y :0:numdecimali,tt);  writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locLinea.vertice1.Z :0:numdecimali,tt);  writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locLinea.vertice2.X :0:numdecimali,tt);  writeln(FDXF,' 11'); writeln(FDXF,tt);
+        str(locLinea.vertice2.Y :0:numdecimali,tt);  writeln(FDXF,' 21'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locLinea.vertice2.Z :0:numdecimali,tt);  writeln(FDXF,' 31'); writeln(FDXF,tt);
+         end;
+       end;
+      'Y':
+       begin
+        locPLinea:=locpiano.grafica.Items[ke];
+        if locPLinea.spezzata.count>1 then
+         begin
+          writeln(FDXF,'  0'); writeln(FDXF,'POLYLINE');
+          writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+          writeln(FDXF,' 66'); writeln(FDXF,'     1');
+          writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+          writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+          writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+          if dim2D>2 then
+           begin writeln(FDXF,' 70'); writeln(FDXF,'     9'); end
+            else
+           begin writeln(FDXF,' 70'); writeln(FDXF,'     1'); end;
+          for kv := 0 to locPLinea.spezzata.count-1 do
+           begin
+            VT:=locPLinea.spezzata.items[kv];
+            writeln(FDXF,'  0'); writeln(FDXF,'VERTEX');
+            writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+            str(VT.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+            str(VT.Y :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+            if dim2D>2 then
+             begin
+              str(VT.Z :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+              writeln(FDXF,' 70'); writeln(FDXF,'    32');
+             end;
+           end;
+          writeln(FDXF,'  0'); writeln(FDXF,'SEQEND');
+          writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+         end;
+       end;
+      'O' :
+       begin // nel caso deipenup si fa la spezzata su un altropiano
+        locPLinea:=locpiano.grafica.Items[ke];
+        listaVT.clear;
+        VT:=locPLinea.spezzata.items[1];
+        if Vt.flagge<>0 then pennaSu:=True else pennaSu:=False;
+        finalevt:=1;    finaleprec:=1;
+        while finalevt<locPLinea.spezzata.count do
+         begin
+          for kji:=finaleprec to locPLinea.spezzata.count do
+           begin
+            Vt:=locPLinea.spezzata.items[kji-1];
+            if pennaSu then begin if Vt.flagge=0  then break;  end
+                       else begin if Vt.flagge<>0 then break;  end;
+            finalevt:=kji;
+           end;
+          for kji:=finaleprec to finalevt do
+           begin
+            Vt:=locPLinea.spezzata.items[kji-1];
+            listaVT.add(VT);
+           end;
+
+        if listaVT.count>1 then
+         begin
+          if (Not(EsportoPenup) and pennasu) then begin end
+           else
+           begin
+            writeln(FDXF,'  0'); writeln(FDXF,'POLYLINE');
+            writeln(FDXF,'  8');
+            if Not(pennasu) then  writeln(FDXF,locpiano.nome) else writeln(FDXF,locpiano.nome+'_I');
+            writeln(FDXF,' 66'); writeln(FDXF,'     1');
+            writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+            writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+            writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+            if dim2D>2 then
+             begin writeln(FDXF,' 70'); writeln(FDXF,'     8'); end
+              else
+             begin writeln(FDXF,' 70'); writeln(FDXF,'     0'); end;
+            for kv := 0 to listaVT.count-1 do
+             begin
+              VT:=listaVT.items[kv];
+              writeln(FDXF,'  0'); writeln(FDXF,'VERTEX');
+              writeln(FDXF,'  8');
+              if Not(pennasu) then  writeln(FDXF,locpiano.nome) else writeln(FDXF,locpiano.nome+'_I');
+              str(VT.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+              str(VT.Y :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+              if dim2D>2 then
+               begin
+                str(VT.Z :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+                writeln(FDXF,' 70'); writeln(FDXF,'    32');
+               end;
+             end;
+             writeln(FDXF,'  0'); writeln(FDXF,'SEQEND');
+             writeln(FDXF,'  8');
+            if Not(pennasu) then  writeln(FDXF,locpiano.nome) else writeln(FDXF,locpiano.nome+'_I');
+           end;
+         end;
+         for kllvt:=listaVT.count-1 downto 1 do listaVT.delete(0);
+         finaleprec:=finalevt+1;
+         pennasu:=not(pennasu);
+        end;
+       end;
+      'R' :
+       begin
+        locreg:=locpiano.grafica.Items[ke];
+        for kpol:=0 to locreg.listapoligoni.count-1 do
+         begin
+          locPLinea:=locreg.listapoligoni.Items[kpol];
+          writeln(FDXF,'  0'); writeln(FDXF,'POLYLINE');
+          writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+          writeln(FDXF,' 66'); writeln(FDXF,'     1');
+          writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+          writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+          writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+          if dim2D>2 then
+           begin
+            writeln(FDXF,' 70'); writeln(FDXF,'     9');
+           end
+           else
+           begin
+            writeln(FDXF,' 70'); writeln(FDXF,'     1');
+           end;
+          for kv := 0 to locPLinea.spezzata.count-1 do
+           begin
+            VT:=locPLinea.spezzata.items[kv];
+            writeln(FDXF,'  0'); writeln(FDXF,'VERTEX');
+            writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+            str(VT.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+            str(VT.Y :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+            if dim2D>2 then
+             begin
+              str(VT.Z :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+              writeln(FDXF,' 70'); writeln(FDXF,'    32');
+             end;
+           end;
+           writeln(FDXF,'  0'); writeln(FDXF,'SEQEND');
+           writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+         end;
+       end;
+      'A' :
+       begin
+        locArc:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'ARC');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locArc.Xc :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locArc.Yc :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locArc.Zc :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locArc.Raggio :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+        alfa:=dammiangolo(locArc.x1,locArc.y1,locArc.xc,locArc.yc); alfa:=(alfa*180)/pi;
+        str(alfa :0:numdecimali,tt); writeln(FDXF,' 50'); writeln(FDXF,tt);
+        alfa:=dammiangolo(locArc.x2,locArc.y2,locArc.xc,locArc.yc); alfa:=(alfa*180)/pi;
+        str(alfa :0:numdecimali,tt); writeln(FDXF,' 51'); writeln(FDXF,tt);
+       end;
+      'C' :
+       begin
+        locCerchio:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'CIRCLE');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locCerchio.Xc :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locCerchio.Yc :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCerchio.Zc :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locCerchio.Raggio :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+       end;
+      'T' :
+       begin
+        locTesto:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'TEXT');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        writeln(FDXF,'  7');
+        ttFont:=dammifonteTesto(loctesto,locpiano);
+        writeln(FDXF,ttFont);
+        str(locTesto.Xpos :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locTesto.Ypos :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locTesto.altezza :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+        ttCControl:=LocTesto.caratteri;
+        writeln(FDXF,'  1'); writeln(FDXF,ttCControl);
+        writeln(FDXF,' 50'); writeln(FDXF,locTesto.angolo:0:numdecimali);
+        if odd(locTesto.FonteStyle) then           // angolo 15 gradi;
+         begin
+          writeln(FDXF,' 51');
+          // versionemarchje 10000
+//           writeln(FDXF,'15'); 15 in finsiel 10 in marche
+           writeln(FDXF,'10');
+         end;
+
+         /// marche 10000  fattore di stiramento
+        if widthfactore then begin writeln(FDXF,' 41'); writeln(FDXF,'  0.8'); end;
+
+         if ((locTesto.Xpos<>locTesto.xpos2) or (locTesto.ypos<>locTesto.ypos2)) then
+          begin
+           writeln(FDXF,' 72'); writeln(FDXF,'     3');
+           str(locTesto.Xpos2 :0:numdecimali,tt); writeln(FDXF,' 11'); writeln(FDXF,tt);
+           str(locTesto.Ypos2 :0:numdecimali,tt); writeln(FDXF,' 21'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(locTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 31'); writeln(FDXF,tt);
+            end;
+          end;
+        { eventualmente riportare anche gli stili del font di testo con interprete }
+
+       end;
+      'Q' :
+       begin
+        locQuota:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'TEXT');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locQuota.Xpos :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locQuota.Ypos :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locQuota.Zpos :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locQuota.altezza :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+        writeln(FDXF,'  1'); writeln(FDXF,locQuota.caratteri);
+        writeln(FDXF,' 50'); writeln(FDXF,locQuota.angolo:0:numdecimali);
+
+         if ((locQuota.Xpos<>locQuota.xpos2) or (locQuota.ypos<>locQuota.ypos2)) then
+          begin
+           writeln(FDXF,' 72'); writeln(FDXF,'     3');
+           str(locQuota.Xpos2 :0:numdecimali,tt); writeln(FDXF,' 11'); writeln(FDXF,tt);
+           str(locQuota.Ypos2 :0:numdecimali,tt); writeln(FDXF,' 21'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(locQuota.Zpos :0:numdecimali,tt); writeln(FDXF,' 31'); writeln(FDXF,tt);
+            end;
+          end;
+
+
+        writeln(FDXF,'  0'); writeln(FDXF,'POINT');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locquota.Posizione.X :0:numdecimali,tt); writeln(FDXF,' 10');  writeln(FDXF,tt);
+        str(locquota.Posizione.Y :0:numdecimali,tt); writeln(FDXF,' 20');  writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locquota.Posizione.Z :0:numdecimali,tt); writeln(FDXF,' 30');  writeln(FDXF,tt);
+         end;
+       end;
+      'S' :
+       begin
+        locSimbolo:=locpiano.grafica.Items[ke];
+        if locsimbolo.indiceloc>=0 then
+        begin
+         writeln(FDXF,'  0'); writeln(FDXF,'INSERT');
+         writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+         if Roma then
+          begin
+           if length(locSimbolo.Nome) > 8 then
+            begin
+             writeln(FDXF,'  2'); writeln(FDXF,ripassanomeblocco(locSimbolo.Nome));
+            end
+            else
+            begin
+             writeln(FDXF,'  2'); writeln(FDXF,locSimbolo.Nome);
+            end;
+          end
+          else
+         begin
+          writeln(FDXF,'  2');
+          namss:=locSimbolo.Nome;
+          if namss[1]='#' then namss[1]:='X';
+          if namss[1]='*' then namss[1]:='X';
+          writeln(FDXF,namss);
+         end;
+
+         str(locSimbolo.X :0:numdecimali,tt); writeln(FDXF,' 10');  writeln(FDXF,tt);
+         str(locSimbolo.Y :0:numdecimali,tt); writeln(FDXF,' 20');  writeln(FDXF,tt);
+         if dim2D>2 then
+          begin
+           str(locSimbolo.Z :0:numdecimali,tt); writeln(FDXF,' 30');  writeln(FDXF,tt);
+          end;
+         str(locSimbolo.xscale :0:numdecimali,tt); writeln(FDXF,' 41');     writeln(FDXF,tt);
+         str(locSimbolo.yscale :0:numdecimali,tt); writeln(FDXF,' 42');     writeln(FDXF,tt);
+         str(locSimbolo.rotazione :0:numdecimali,tt); writeln(FDXF,' 50');  writeln(FDXF,tt);
+        end
+        else
+        begin
+{
+         writeln(FDXF,'  0'); writeln(FDXF,'POINT');
+         writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+         str(locSimbolo.X :0:numdecimali,tt); writeln(FDXF,' 10');  writeln(FDXF,tt);
+         str(locSimbolo.Y :0:numdecimali,tt); writeln(FDXF,' 20');  writeln(FDXF,tt);
+         if dim2D>2 then
+          begin
+           str(locSimbolo.Z :0:numdecimali,tt); writeln(FDXF,' 30');  writeln(FDXF,tt);
+          end;
+}
+        end;
+       end;
+      'V' :
+       begin
+        locCivico:=locpiano.grafica.Items[ke];
+        writeln(FDXF,'  0'); writeln(FDXF,'TEXT');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locCivico.Xpos :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locCivico.Ypos :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCivico.Zpos :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locCivico.altezza :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+        ttCControl:=locCivico.caratteri;
+        if ttCControl[length(ttCControl)]='^' then ttCControl[length(ttCControl)]:='∞';
+        writeln(FDXF,'  1'); writeln(FDXF,ttCControl);
+        writeln(FDXF,' 50'); writeln(FDXF,locCivico.angolo:0:numdecimali);
+         if ((locCivico.Xpos<>locCivico.xpos2) or (locCivico.ypos<>locCivico.ypos2)) then
+          begin
+           writeln(FDXF,' 72'); writeln(FDXF,'     3');
+           str(locCivico.Xpos2 :0:numdecimali,tt); writeln(FDXF,' 11'); writeln(FDXF,tt);
+           str(locCivico.Ypos2 :0:numdecimali,tt); writeln(FDXF,' 21'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(locCivico.Zpos :0:numdecimali,tt); writeln(FDXF,' 31'); writeln(FDXF,tt);
+            end;
+          end;
+
+
+        writeln(FDXF,'  0'); writeln(FDXF,'LINE');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locCivico.PosEdi.X :0:numdecimali,tt);  writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locCivico.PosEdi.Y :0:numdecimali,tt);  writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCivico.PosEdi.Z :0:numdecimali,tt);  writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locCivico.Xpos :0:numdecimali,tt);  writeln(FDXF,' 11'); writeln(FDXF,tt);
+        str(locCivico.Ypos :0:numdecimali,tt);  writeln(FDXF,' 21'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCivico.Zpos :0:numdecimali,tt);  writeln(FDXF,' 31'); writeln(FDXF,tt);
+         end;
+        writeln(FDXF,'  0'); writeln(FDXF,'LINE');
+        writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        str(locCivico.PosAsse.X :0:numdecimali,tt);  writeln(FDXF,' 10'); writeln(FDXF,tt);
+        str(locCivico.PosAsse.Y :0:numdecimali,tt);  writeln(FDXF,' 20'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCivico.PosAsse.Z :0:numdecimali,tt);  writeln(FDXF,' 30'); writeln(FDXF,tt);
+         end;
+        str(locCivico.Xpos :0:numdecimali,tt);  writeln(FDXF,' 11'); writeln(FDXF,tt);
+        str(locCivico.Ypos :0:numdecimali,tt);  writeln(FDXF,' 21'); writeln(FDXF,tt);
+        if dim2D>2 then
+         begin
+          str(locCivico.Zpos :0:numdecimali,tt);  writeln(FDXF,' 31'); writeln(FDXF,tt);
+         end;
+       end;
+       't' :
+        begin
+         locMultiTesto:=locpiano.grafica.Items[ke];
+         for kmmt:=0 to locMultiTesto.listatesti.count-1 do
+          begin
+           locTesto:=locMultiTesto.listatesti.Items[kmmt];
+           writeln(FDXF,'  0'); writeln(FDXF,'TEXT');
+           writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+           str(locTesto.Xpos :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+           str(locTesto.Ypos :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(locTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+            end;
+           str(locTesto.altezza :0:numdecimali,tt); writeln(FDXF,' 40'); writeln(FDXF,tt);
+           ttCControl:=locTesto.caratteri;
+           if ttCControl[length(ttCControl)]='^' then ttCControl[length(ttCControl)]:='∞';
+           writeln(FDXF,'  1'); writeln(FDXF,ttCControl);
+           writeln(FDXF,' 50'); writeln(FDXF,locTesto.angolo:0:numdecimali);
+           if odd(locTesto.FonteStyle) then           // angolo 15 gradi;
+              begin
+               writeln(FDXF,' 51');
+          // versionemarchje 10000
+//           writeln(FDXF,'15'); 15 in finsiel 10 in marche
+               writeln(FDXF,'10');
+              end;
+           /// marche 10000  fattore di stiramento
+          if widthfactore then begin writeln(FDXF,' 41'); writeln(FDXF,'  0.8'); end;
+           if ((locTesto.Xpos<>locTesto.xpos2) or (locTesto.ypos<>locTesto.ypos2)) then
+            begin
+             writeln(FDXF,' 72'); writeln(FDXF,'     3');
+             str(locTesto.Xpos2 :0:numdecimali,tt); writeln(FDXF,' 11'); writeln(FDXF,tt);
+             str(locTesto.Ypos2 :0:numdecimali,tt); writeln(FDXF,' 21'); writeln(FDXF,tt);
+             if dim2D>2 then
+              begin
+               str(locTesto.Zpos :0:numdecimali,tt); writeln(FDXF,' 31'); writeln(FDXF,tt);
+              end;
+            end;
+
+          end;
+        end;
+       'a' :
+        begin
+         locasse:=locpiano.grafica.Items[ke];
+         writeln(FDXF,'  0'); writeln(FDXF,'POLYLINE');
+         writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+         writeln(FDXF,' 66'); writeln(FDXF,'     1');
+         writeln(FDXF,' 10'); writeln(FDXF,'0.0');
+         writeln(FDXF,' 20'); writeln(FDXF,'0.0');
+         writeln(FDXF,' 30'); writeln(FDXF,'0.0');
+         if dim2D>2 then
+          begin writeln(FDXF,' 70'); writeln(FDXF,'     8'); end
+           else
+          begin writeln(FDXF,' 70'); writeln(FDXF,'     0'); end;
+         for kv := 0 to locasse.spezzata.count-1 do
+          begin
+           VT:=locasse.spezzata.items[kv];
+           writeln(FDXF,'  0'); writeln(FDXF,'VERTEX');
+           writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+           str(VT.X :0:numdecimali,tt); writeln(FDXF,' 10'); writeln(FDXF,tt);
+           str(VT.Y :0:numdecimali,tt); writeln(FDXF,' 20'); writeln(FDXF,tt);
+           if dim2D>2 then
+            begin
+             str(VT.Z :0:numdecimali,tt); writeln(FDXF,' 30'); writeln(FDXF,tt);
+            end;
+           writeln(FDXF,' 70'); writeln(FDXF,'    32');
+          end;
+         writeln(FDXF,'  0'); writeln(FDXF,'SEQEND');
+         writeln(FDXF,'  8'); writeln(FDXF,locpiano.nome);
+        end;
+       else messagebeep(0);
+     end;
+    end;
+  end;
+
+ writeln(FDXF,'  0'); writeln(FDXF,'ENDSEC'); writeln(FDXF,'  0'); writeln(FDXF,'EOF');
+ closefile(FDXF);
+ listaVT.clear;
+ listaVT.Free;
+
+end;
+
+procedure leggitavolaIndcolori;
+var nomFile,linea : String;
+    k,kl : Integer;
+    locpiano : TPiano;
+    codicenome,indicecol : String;
+    fatto : Boolean;
+    tte : String;
+    value : Integer;
+procedure dimmivalue;
+var k1,fase : Integer;
+begin
+//  LamcadForm.caption:=linea; LamcadForm.Update;
+ fase:=1;
+ codicenome:=''; indicecol:='';
+ for k1:=1 to length(linea) do
+ begin
+  if linea[k1]=' ' then begin fase:=2; continue; end;
+  value:=ord(linea[k1]);
+//  str(value,tte); LamcadForm.caption:=linea; LamcadForm.Update;
+
+  case fase of
+   1 : codicenome:=codicenome+linea[k1];
+   2 : indicecol:=indicecol+linea[k1];
+  end;
+ end;
+ if length(indicecol)=0 then indicecol:='X';
+end;
+
+begin
+ nomFile:=directoryapertura+DirappoggioFiles+'\coltab.txt';
+ if not(Fileexists(nomfile)) then
+  begin
+   application.messagebox('Manca file coltab.txt', 'operazione annullata',id_OK);
+   exit;
+  end;
+
+ for k:=0 to disegnocorrente.listapiani.count-1 do
+  begin
+   locpiano:=disegnocorrente.listapiani.Items[k];
+   if locpiano.nome='0' then begin locpiano.indcolor:=7; continue; end;
+   assignFile(F,nomFile); reset(F);
+   fatto:=False;
+//   for kl:=0 to 110 do
+   while not(eof(F)) do
+    begin
+     readln(F,linea);
+     dimmivalue;
+     if codicenome=locpiano.nome then
+      begin
+       case indicecol[1] of
+        '0' : if locpiano.visibile then locpiano.indcolor:=1 else locpiano.indcolor:=-1;
+        '1' : if locpiano.visibile then locpiano.indcolor:=2 else locpiano.indcolor:=-2;
+        '2' : if locpiano.visibile then locpiano.indcolor:=3 else locpiano.indcolor:=-3;
+        '3' : if locpiano.visibile then locpiano.indcolor:=4 else locpiano.indcolor:=-4;
+        '4' : if locpiano.visibile then locpiano.indcolor:=5 else locpiano.indcolor:=-5;
+        '5' : if locpiano.visibile then locpiano.indcolor:=6 else locpiano.indcolor:=-6;
+        '6' : if locpiano.visibile then locpiano.indcolor:=7 else locpiano.indcolor:=-7;
+        '7' : if locpiano.visibile then locpiano.indcolor:=8 else locpiano.indcolor:=-8;
+        else  if locpiano.visibile then locpiano.indcolor:=7 else locpiano.indcolor:=-7;
+       end;
+       fatto:=True;
+      end;
+    end;
+   closefile(F);
+
+   if not(fatto) then
+    begin
+     tte:=locpiano.nome;
+     application.messagebox('Manca definizione layer', pchar(tte),id_OK);
+     application.messagebox('Ridefinire file.txt e ripetere', 'operazione non completata',id_OK);
+     exit;
+    end;
+  end;
+end;
+
+
+
+end.

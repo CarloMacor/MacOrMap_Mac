@@ -1,0 +1,26 @@
+-x
+c
+-arch
+x86_64
+-fretain-comments-from-system-headers
+-std=gnu99
+-fpascal-strings
+-Os
+-isysroot
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+-fasm-blocks
+-mmacosx-version-min=10.11
+-g
+-fvisibility=hidden
+-iquote
+-iquote
+-I/Users/carlomacor/Sorgenti/Sorgenti/MacOrMap/build/Release/include
+-F/Users/carlomacor/Sorgenti/Sorgenti/MacOrMap/build/Release
+-ferror-limit=10
+-working-directory=/Users/carlomacor/Sorgenti/Sorgenti/MacOrMap
+-Xclang
+-detailed-preprocessing-record
+x86_64-apple-darwin15.5.0
+"4.2.1 Compatible Apple LLVM 7.3.0 (clang-703.0.31)"
+SDK_PRODUCT_BUILD_VERSION=15E60
+15E60
